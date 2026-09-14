@@ -84,16 +84,3 @@ asm-tool/
 │   └── style.css
 └── requirements.txt
 ```
-
-## Resume framing
-
-> **Attack Surface Recon & Exposure Reporting Tool**
-> Technologies: Python, Flask, Nmap-style TCP scanning, crt.sh API, TLS, DNS
-> - Built a tool to enumerate subdomains via certificate transparency logs and
->   DNS resolution, then scanned discovered hosts for open ports and service
->   exposure.
-> - Implemented rule-based exposure checks (expiring TLS certificates,
->   unexpected open ports, missing HTTP security headers) and generated a
->   severity-flagged exposure report with domain/IP intelligence.
-> - Demonstrated an end-to-end asset discovery → assessment → reporting
->   workflow aligned with Attack Surface Management practices.
