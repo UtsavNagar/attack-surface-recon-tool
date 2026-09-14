@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recon Report — {{ report.target }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Exposure Report: {{ report.target }}</h1>
+    <p>Mode: {{ report.mode|upper }} &middot; Completed in {{ report.elapsed_seconds }}s</p>
+  </header>
+
+  <div class="container">
+    <a class="back" href="{{ url_for('index') }}">&larr; New scan</a>
+
+    <!-- RISK SUMMARY -->
+    <div class="card">
+      <h2>Risk Summary</h2>
+      <div class="summary-strip">
+        <div class="summary-box high"><span class="num">{{ report.risk_summary.high }}</span><span class="label">High</span></div>
+        <div class="summary-box medium"><span class="num">{{ report.risk_summary.medium }}</span><span class="label">Medium</span></div>
+        <div class="summary-box low"><span class="num">{{ report.risk_summary.low }}</span><span class="label">Low</span></div>
+        <div class="summary-box info"><span class="num">{{ report.risk_summary.open_ports }}</span><span class="label">Open ports (total)</span></div>
+      </div>
+      {% if report.risk_summary.findings %}
+        <table>
+          <tr><th>Severity</th><th>Host</th><th>Finding</th></tr>
+          {% for f in report.risk_summary.findings %}
+          <tr>
+            <td><span class="badge {{ f.severity|lower }}">{{ f.severity }}</span></td>
+            <td>{{ f.host }}</td>
+            <td>{{ f.detail }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="muted">No high/medium findings flagged.</p>
+      {% endif %}
+    </div>
+
+    <!-- THREAT HUNTING / INTEL PANEL -->
+    <div class="card">
+      <h2>{{ 'IP Intelligence' if report.mode == 'ip' else 'Domain &amp; IP Intelligence'|safe }}</h2>
+      <div class="grid-2">
+        <div>
+          <h3 style="font-size:13px; color:#888; text-transform:uppercase; margin-bottom:6px;">Network / Geolocation</h3>
+          {% if report.intel.error %}
+            <p class="muted">Unavailable: {{ report.intel.error }}</p>
+          {% else %}
+            <div class="kv"><b>IP:</b> {{ report.intel.ip }}</div>
+            <div class="kv"><b>ISP:</b> {{ report.intel.isp }}</div>
+            <div class="kv"><b>Organization:</b> {{ report.intel.org }}</div>
+            <div class="kv"><b>ASN:</b> {{ report.intel.asn }}</div>
+            <div class="kv"><b>Location:</b> {{ report.intel.city }}, {{ report.intel.region }}, {{ report.intel.country }}</div>
+          {% endif %}
+          {% if report.reverse_dns %}
+            <div class="kv"><b>Reverse DNS:</b> {{ report.reverse_dns }}</div>
+          {% endif %}
+        </div>
+        <div>
+          {% if report.whois %}
+            <h3 style="font-size:13px; color:#888; text-transform:uppercase; margin-bottom:6px;">WHOIS</h3>
+            {% if report.whois.error %}
+              <p class="muted">Unavailable: {{ report.whois.error }}</p>
+            {% else %}
+              <div class="kv"><b>Registrar:</b> {{ report.whois.registrar or '—' }}</div>
+              <div class="kv"><b>Created:</b> {{ report.whois.creation_date or '—' }}</div>
+              <div class="kv"><b>Expires:</b> {{ report.whois.expiration_date or '—' }}</div>
+              <div class="kv"><b>Name servers:</b> {{ report.whois.name_servers|join(', ') if report.whois.name_servers else '—' }}</div>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBDOMAIN NOTE -->
+    {% if report.mode == 'domain' %}
+    <div class="card">
+      <h2>Discovered Hosts</h2>
+      {% if report.subdomain_error %}
+        <p class="muted">Note: subdomain enumeration had an issue ({{ report.subdomain_error }}) — showing root domain only.</p>
+      {% endif %}
+      <p class="muted">{{ report.hosts|length }} host(s) scanned (passive discovery via crt.sh, capped for scan time).</p>
+    </div>
+    {% endif %}
+
+    <!-- PER-HOST DETAIL -->
+    {% for h in report.hosts %}
+    <div class="host-block">
+      <h3>{{ h.hostname }} {% if h.ip %}<span class="muted" style="font-weight:400;">({{ h.ip }})</span>{% endif %}</h3>
+      <div class="host-body">
+
+        <b style="font-size:13px;">Open ports</b>
+        {% if h.ports %}
+          <table>
+            <tr><th>Port</th><th>Service</th><th>Banner</th><th>Flag</th></tr>
+            {% for p in h.ports %}
+            <tr>
+              <td>{{ p.port }}</td>
+              <td>{{ p.service }}</td>
+              <td>{{ p.banner or '—' }}</td>
+              <td>{% if p.risky %}<span class="badge high">Exposed</span>{% else %}<span class="badge ok">OK</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          <p class="muted">No open ports found among the common ports checked.</p>
+        {% endif %}
+
+        <div class="grid-2" style="margin-top:12px;">
+          <div>
+            <b style="font-size:13px;">TLS Certificate</b>
+            {% if h.tls.valid %}
+              <div class="kv"><b>Issuer:</b> {{ h.tls.issuer }}</div>
+              <div class="kv"><b>Expires:</b> {{ h.tls.expires }} ({{ h.tls.days_left }} days)
+                {% if h.tls.expiring_soon %}<span class="badge medium">Expiring soon</span>{% endif %}
+              </div>
+            {% else %}
+              <p class="muted">{{ h.tls.error }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <b style="font-size:13px;">HTTP Security Headers</b>
+            {% if h.headers.error %}
+              <p class="muted">{{ h.headers.error }}</p>
+            {% else %}
+              <div class="kv"><b>Present:</b> {{ h.headers.headers_present|join(', ') if h.headers.headers_present else '—' }}</div>
+              <div class="kv"><b>Missing:</b> {{ h.headers.headers_missing|join(', ') if h.headers.headers_missing else 'None' }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+</body>
+</html>

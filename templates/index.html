@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attack Surface Recon Tool</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Attack Surface Recon &amp; Exposure Reporting Tool</h1>
+    <p>Subdomain discovery &middot; port &amp; service exposure &middot; TLS/header checks &middot; IP/domain intel</p>
+  </header>
+
+  <div class="container">
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for m in messages %}
+          <div class="flash">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="warning-box">
+      <b>Authorized use only.</b> Only scan domains or IP addresses you own or have
+      explicit written permission to test. This tool performs live network
+      connections (port scans, HTTP/TLS requests) against the target you enter.
+      Scanning systems without authorization may be illegal in your jurisdiction.
+    </div>
+
+    <div class="card">
+      <h2>Run a scan</h2>
+      <form action="{{ url_for('scan') }}" method="post">
+        <div class="form-row">
+          <label for="target">Domain or IP address</label>
+          <input type="text" id="target" name="target" placeholder="e.g. example.com or 8.8.8.8" required>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="confirm" name="confirm" value="yes" required>
+          <label for="confirm" style="margin:0; font-weight:400;">
+            I confirm I own this target or have explicit authorization to scan it.
+          </label>
+        </div>
+        <button type="submit">Run Recon Scan</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>What this checks</h2>
+      <ul class="muted">
+        <li>Passive subdomain discovery via certificate transparency logs (crt.sh)</li>
+        <li>DNS resolution and reverse DNS</li>
+        <li>Common TCP port exposure (scans a curated list of well-known ports)</li>
+        <li>TLS certificate validity and expiry</li>
+        <li>Missing HTTP security headers</li>
+        <li>WHOIS registrar info (domains) / geolocation &amp; ASN info (IPs)</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
